@@ -205,18 +205,18 @@ export class AuthWebhook implements INodeType {
 			const rawHeaders: string[] = (req as any).rawHeaders || [];
 			for (let i = 0; i < rawHeaders.length; i += 2) {
 				if (rawHeaders[i] && rawHeaders[i].toLowerCase() === 'authorization') {
-					const val = rawHeaders[i + 1] || '';
-					if (val.toLowerCase().startsWith('bearer ')) {
-						token = val.slice(7).trim();
-					}
+					const val = (rawHeaders[i + 1] || '').trim();
+					// Accept with or without Bearer prefix
+					token = val.toLowerCase().startsWith('bearer ') ? val.slice(7).trim() : val;
 					break;
 				}
 			}
 			// Fallback to req.headers (works on older n8n versions)
 			if (!token) {
-				const authHeader = req.headers['authorization'] || '';
-				if (typeof authHeader === 'string' && authHeader.toLowerCase().startsWith('bearer ')) {
-					token = authHeader.slice(7).trim();
+				const authHeader = req.headers['authorization'];
+				if (authHeader && typeof authHeader === 'string') {
+					const val = authHeader.trim();
+					token = val.toLowerCase().startsWith('bearer ') ? val.slice(7).trim() : val;
 				}
 			}
 		} else if (tokenSource === 'customHeader') {
