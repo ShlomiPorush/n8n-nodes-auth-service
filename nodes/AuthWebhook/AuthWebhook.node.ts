@@ -253,8 +253,17 @@ export class AuthWebhook implements INodeType {
 
 		// ── Token valid — pass request data to workflow ──
 		const body = this.getBodyData();
-		const headers = this.getHeaderData();
+		const headers = { ...(this.getHeaderData() as IDataObject) };
 		const query = this.getQueryData();
+
+		// Remove the auth header from the output to avoid exposing tokens in plain text
+		// (the validated token is available in auth.token)
+		if (tokenSource === 'authHeader') {
+			delete headers['authorization'];
+		} else if (tokenSource === 'customHeader') {
+			const headerName = this.getNodeParameter('customHeaderName') as string;
+			delete headers[headerName.toLowerCase()];
+		}
 
 		return {
 			workflowData: [
