@@ -149,11 +149,6 @@ export class AuthWebhook implements INodeType {
 						value: 'lastNode',
 						description: 'Returns data of the last-executed node',
 					},
-					{
-						name: "Using 'Respond to Webhook' Node",
-						value: 'responseNode',
-						description: 'Response defined in that node',
-					},
 				],
 				default: 'onReceived',
 				description: 'When and how to respond to the webhook',
@@ -165,11 +160,6 @@ export class AuthWebhook implements INodeType {
 				typeOptions: {
 					minValue: 100,
 					maxValue: 599,
-				},
-				displayOptions: {
-					hide: {
-						responseMode: ['responseNode'],
-					},
 				},
 				default: 200,
 				description: 'The HTTP Response code to return',
