@@ -1,0 +1,41 @@
+{
+  "name": "n8n-nodes-auth-service",
+  "version": "0.2.4",
+  "description": "n8n community node to validate tokens against an Auth Service instance",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "auth",
+    "token",
+    "validate"
+  ],
+  "license": "MIT",
+  "author": "Shlomi Porush",
+  "main": "dist/nodes/AuthService/AuthService.node.js",
+  "scripts": {
+    "build": "tsc && node -e \"const fs=require('fs');const p=require('path');fs.cpSync(p.join('nodes','AuthService','authservice.svg'),p.join('dist','nodes','AuthService','authservice.svg'));\"",
+    "dev": "tsc --watch",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/AuthServiceApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/AuthService/AuthService.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "n8n-workflow": "*",
+    "typescript": "~5.5.0"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  }
+}
