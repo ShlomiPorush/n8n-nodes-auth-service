@@ -274,11 +274,6 @@ export class AuthWebhook implements INodeType {
 							params: req.params,
 							query,
 							body,
-							auth: {
-								token,
-								zone: authZone,
-								level: authLevel,
-							},
 						} as IDataObject,
 					},
 				],
