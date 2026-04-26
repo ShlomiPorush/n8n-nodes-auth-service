@@ -122,6 +122,13 @@ export class AuthWebhook implements INodeType {
 				description: 'The name of the header containing the token',
 				displayOptions: { show: { tokenSource: ['customHeader'] } },
 			},
+			{
+				displayName: 'Token Prefix',
+				name: 'tokenPrefix',
+				type: 'string',
+				default: 'Bearer',
+				description: 'Prefix to strip from the header value before extracting the token (e.g. "Bearer"). Leave empty if the header contains the raw token.',
+			},
 
 			// ── Response Settings ──
 			{
@@ -197,45 +204,23 @@ export class AuthWebhook implements INodeType {
 		const tokenSource = this.getNodeParameter('tokenSource') as string;
 
 		// ── Extract token ──
-		// n8n may strip/redact Authorization from req.headers,
-		// so we check rawHeaders (immutable Node.js array) first.
 		let token = '';
+		let headerVal = '';
+
 		if (tokenSource === 'authHeader') {
-			// Try rawHeaders first (array of [name, value, name, value, ...])
-			const rawHeaders: string[] = (req as any).rawHeaders || [];
-			for (let i = 0; i < rawHeaders.length; i += 2) {
-				if (rawHeaders[i] && rawHeaders[i].toLowerCase() === 'authorization') {
-					const val = (rawHeaders[i + 1] || '').trim();
-					// Accept with or without Bearer prefix
-					token = val.toLowerCase().startsWith('bearer ') ? val.slice(7).trim() : val;
-					break;
-				}
-			}
-			// Fallback to req.headers (works on older n8n versions)
-			if (!token) {
-				const authHeader = req.headers['authorization'];
-				if (authHeader && typeof authHeader === 'string') {
-					const val = authHeader.trim();
-					token = val.toLowerCase().startsWith('bearer ') ? val.slice(7).trim() : val;
-				}
-			}
+			headerVal = (req.headers['authorization'] as string) || '';
 		} else if (tokenSource === 'customHeader') {
 			const headerName = this.getNodeParameter('customHeaderName') as string;
-			// Try rawHeaders first
-			const rawHeaders: string[] = (req as any).rawHeaders || [];
-			for (let i = 0; i < rawHeaders.length; i += 2) {
-				if (rawHeaders[i] && rawHeaders[i].toLowerCase() === headerName.toLowerCase()) {
-					token = rawHeaders[i + 1] || '';
-					break;
-				}
-			}
-			// Fallback
-			if (!token) {
-				const headerVal = req.headers[headerName.toLowerCase()];
-				if (headerVal) {
-					token = typeof headerVal === 'string' ? headerVal : String(headerVal);
-				}
-			}
+			headerVal = (req.headers[headerName.toLowerCase()] as string) || '';
+		}
+
+		// Strip configured prefix from header value
+		const prefix = (this.getNodeParameter('tokenPrefix', '') as string).trim();
+		headerVal = headerVal.trim();
+		if (prefix && headerVal.toLowerCase().startsWith(prefix.toLowerCase() + ' ')) {
+			token = headerVal.slice(prefix.length + 1).trim();
+		} else {
+			token = headerVal;
 		}
 
 		// ── No token → 403 ──
