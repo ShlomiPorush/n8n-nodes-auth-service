@@ -3,6 +3,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IDataObject,
 } from 'n8n-workflow';
 
 export class RespondToAuthWebhook implements INodeType {
@@ -72,39 +73,48 @@ export class RespondToAuthWebhook implements INodeType {
 				displayOptions: { show: { respondWith: ['text'] } },
 			},
 			{
-				displayName: 'Response Code',
-				name: 'responseCode',
-				type: 'number',
-				typeOptions: { minValue: 100, maxValue: 599 },
-				default: 200,
-				description: 'The HTTP status code to return',
-			},
-			{
-				displayName: 'Response Headers',
-				name: 'responseHeaders',
-				placeholder: 'Add Header',
-				description: 'Custom headers to include in the response',
-				type: 'fixedCollection',
-				typeOptions: { multipleValues: true },
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
-						name: 'entries',
-						displayName: 'Entries',
-						values: [
+						displayName: 'Response Code',
+						name: 'responseCode',
+						type: 'number',
+						typeOptions: { minValue: 100, maxValue: 599 },
+						default: 200,
+						description: 'The HTTP status code to return. Defaults to 200.',
+					},
+					{
+						displayName: 'Response Headers',
+						name: 'responseHeaders',
+						placeholder: 'Add Response Header',
+						description: 'Add headers to the webhook response',
+						type: 'fixedCollection',
+						typeOptions: { multipleValues: true },
+						default: {},
+						options: [
 							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-								description: 'Header name',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								description: 'Header value',
+								name: 'entries',
+								displayName: 'Entries',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description: 'Name of the header',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the header',
+									},
+								],
 							},
 						],
 					},
@@ -115,34 +125,20 @@ export class RespondToAuthWebhook implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-
-		// Access the response object through n8n's execution context
-		// (same mechanism the built-in "Respond to Webhook" uses)
-		const resp = (this as any).getResponseObject?.();
-		if (!resp) {
-			throw new Error(
-				'No pending webhook response found. Make sure the Auth Webhook node is set to '
-				+ '"Using \'Respond to Auth Webhook\' Node" mode and this node is in the same workflow.',
-			);
-		}
-
-		// ── Build and send response ──
 		const respondWith = this.getNodeParameter('respondWith', 0) as string;
-		const responseCode = this.getNodeParameter('responseCode', 0) as number;
+		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
-		// Set custom headers
-		const headerParam = this.getNodeParameter('responseHeaders', 0, {}) as {
-			entries?: Array<{ name: string; value: string }>;
-		};
-		if (headerParam.entries) {
-			for (const h of headerParam.entries) {
-				if (h.name) resp.setHeader(h.name, h.value);
+		// Build response headers
+		const headers = {} as IDataObject;
+		if (options.responseHeaders) {
+			for (const header of (options.responseHeaders as IDataObject).entries as IDataObject[]) {
+				headers[(header.name as string).toLowerCase()] = header.value;
 			}
 		}
 
-		resp.status(responseCode);
-
+		const statusCode = (options.responseCode as number) || 200;
 		let responseBody: unknown;
+
 		switch (respondWith) {
 			case 'allIncomingItems':
 				responseBody = items.map((i) => i.json);
@@ -154,15 +150,22 @@ export class RespondToAuthWebhook implements INodeType {
 				responseBody = JSON.parse(this.getNodeParameter('responseBody', 0) as string);
 				break;
 			case 'text':
-				resp.setHeader('Content-Type', 'text/plain');
-				resp.send(this.getNodeParameter('responseTextBody', 0) as string);
-				return [items];
+				responseBody = this.getNodeParameter('responseTextBody', 0) as string;
+				break;
 			case 'noData':
-				resp.end();
-				return [items];
+				responseBody = undefined;
+				break;
 		}
 
-		resp.json(responseBody);
+		// Use n8n's built-in sendResponse() — same mechanism as the official
+		// "Respond to Webhook" node. This handles cross-process communication
+		// in queue mode automatically.
+		(this as any).sendResponse({
+			body: responseBody,
+			headers,
+			statusCode,
+		});
+
 		return [items];
 	}
 }
