@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-auth-service",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "n8n community node to validate tokens against an Auth Service instance",
   "keywords": [
     "n8n-community-node-package",
@@ -13,7 +13,7 @@
   "author": "Shlomi Porush",
   "main": "dist/nodes/AuthService/AuthService.node.js",
   "scripts": {
-    "build": "tsc && node -e \"const fs=require('fs');const p=require('path');fs.cpSync(p.join('nodes','AuthService','authservice.svg'),p.join('dist','nodes','AuthService','authservice.svg'));fs.mkdirSync(p.join('dist','nodes','AuthWebhook'),{recursive:true});fs.cpSync(p.join('nodes','AuthWebhook','authwebhook.svg'),p.join('dist','nodes','AuthWebhook','authwebhook.svg'));\"",
+    "build": "tsc && node -e \"const fs=require('fs');const p=require('path');['AuthService','AuthWebhook','RespondToAuthWebhook'].forEach(n=>{fs.mkdirSync(p.join('dist','nodes',n),{recursive:true})});fs.cpSync(p.join('nodes','AuthService','authservice.svg'),p.join('dist','nodes','AuthService','authservice.svg'));fs.cpSync(p.join('nodes','AuthWebhook','authwebhook.svg'),p.join('dist','nodes','AuthWebhook','authwebhook.svg'));fs.cpSync(p.join('nodes','RespondToAuthWebhook','respondtoauthwebhook.svg'),p.join('dist','nodes','RespondToAuthWebhook','respondtoauthwebhook.svg'));\"",
     "dev": "tsc --watch",
     "lint": "tsc --noEmit",
     "prepublishOnly": "npm run build"
@@ -28,7 +28,8 @@
     ],
     "nodes": [
       "dist/nodes/AuthService/AuthService.node.js",
-      "dist/nodes/AuthWebhook/AuthWebhook.node.js"
+      "dist/nodes/AuthWebhook/AuthWebhook.node.js",
+      "dist/nodes/RespondToAuthWebhook/RespondToAuthWebhook.node.js"
     ]
   },
   "devDependencies": {

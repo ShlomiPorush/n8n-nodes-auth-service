@@ -7,6 +7,8 @@ import type {
 	ILoadOptionsFunctions,
 	IDataObject,
 } from 'n8n-workflow';
+import { randomUUID } from 'crypto';
+import { storeResponse } from '../responseStore';
 
 export class AuthWebhook implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,7 +36,8 @@ export class AuthWebhook implements INodeType {
 			{
 				name: 'default',
 				httpMethod: '={{$parameter["httpMethod"] || "POST"}}',
-				responseMode: '={{$parameter["responseMode"]}}',
+				// Map responseNode → onReceived for n8n core (we handle the response ourselves)
+				responseMode: '={{$parameter["responseMode"] === "responseNode" ? "onReceived" : $parameter["responseMode"]}}',
 				path: '={{$parameter["path"]}}',
 				isFullPath: true,
 			},
@@ -147,6 +150,11 @@ export class AuthWebhook implements INodeType {
 						value: 'lastNode',
 						description: 'Returns data of the last-executed node',
 					},
+					{
+						name: "Using 'Respond to Auth Webhook' Node",
+						value: 'responseNode',
+						description: 'Response defined in a Respond to Auth Webhook node',
+					},
 				],
 				default: 'onReceived',
 				description: 'When and how to respond to the webhook',
@@ -161,6 +169,75 @@ export class AuthWebhook implements INodeType {
 				},
 				default: 200,
 				description: 'The HTTP response code to return on success',
+			},
+
+			// ── Options ──
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add option',
+				default: {},
+				options: [
+					{
+						displayName: 'Response Headers',
+						name: 'responseHeaders',
+						placeholder: 'Add Response Header',
+						description: 'Add custom headers to the webhook response',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'entries',
+								displayName: 'Entries',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description: 'Name of the header',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the header',
+									},
+								],
+							},
+						],
+					},
+					{
+						displayName: 'Response Data',
+						name: 'responseData',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/responseMode': ['onReceived'],
+							},
+						},
+						default: '',
+						placeholder: '{"status": "ok"}',
+						description: 'Custom response body to send (only for "Immediately" mode)',
+					},
+					{
+						displayName: 'No Response Body',
+						name: 'noResponseBody',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to send an empty body in the response',
+						displayOptions: {
+							show: {
+								'/responseMode': ['onReceived'],
+							},
+						},
+					},
+				],
 			},
 		],
 	};
@@ -251,13 +328,13 @@ export class AuthWebhook implements INodeType {
 			return { noWebhookResponse: true };
 		}
 
-		// ── Token valid — pass request data to workflow ──
+		// ── Token valid — build output ──
+		const responseMode = this.getNodeParameter('responseMode') as string;
 		const body = this.getBodyData();
 		const headers = { ...(this.getHeaderData() as IDataObject) };
 		const query = this.getQueryData();
 
 		// Remove the auth header from the output to avoid exposing tokens in plain text
-		// (the validated token is available in auth.token)
 		if (tokenSource === 'authHeader') {
 			delete headers['authorization'];
 		} else if (tokenSource === 'customHeader') {
@@ -265,19 +342,26 @@ export class AuthWebhook implements INodeType {
 			delete headers[headerName.toLowerCase()];
 		}
 
+		const outputData: IDataObject = {
+			headers,
+			params: req.params,
+			query,
+			body,
+		};
+
+		// For responseNode mode: store the response object so "Respond to Auth Webhook" can use it
+		if (responseMode === 'responseNode') {
+			const responseId = randomUUID();
+			storeResponse(responseId, resp);
+			outputData.__authWebhookResponseId = responseId;
+			return {
+				noWebhookResponse: true,
+				workflowData: [[{ json: outputData }]],
+			};
+		}
+
 		return {
-			workflowData: [
-				[
-					{
-						json: {
-							headers,
-							params: req.params,
-							query,
-							body,
-						} as IDataObject,
-					},
-				],
-			],
+			workflowData: [[{ json: outputData }]],
 		};
 	}
 }
