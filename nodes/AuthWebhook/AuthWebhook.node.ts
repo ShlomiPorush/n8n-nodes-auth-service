@@ -197,17 +197,44 @@ export class AuthWebhook implements INodeType {
 		const tokenSource = this.getNodeParameter('tokenSource') as string;
 
 		// ── Extract token ──
+		// n8n may strip/redact Authorization from req.headers,
+		// so we check rawHeaders (immutable Node.js array) first.
 		let token = '';
 		if (tokenSource === 'authHeader') {
-			const authHeader = req.headers['authorization'] || '';
-			if (typeof authHeader === 'string' && authHeader.toLowerCase().startsWith('bearer ')) {
-				token = authHeader.slice(7).trim();
+			// Try rawHeaders first (array of [name, value, name, value, ...])
+			const rawHeaders: string[] = (req as any).rawHeaders || [];
+			for (let i = 0; i < rawHeaders.length; i += 2) {
+				if (rawHeaders[i] && rawHeaders[i].toLowerCase() === 'authorization') {
+					const val = rawHeaders[i + 1] || '';
+					if (val.toLowerCase().startsWith('bearer ')) {
+						token = val.slice(7).trim();
+					}
+					break;
+				}
+			}
+			// Fallback to req.headers (works on older n8n versions)
+			if (!token) {
+				const authHeader = req.headers['authorization'] || '';
+				if (typeof authHeader === 'string' && authHeader.toLowerCase().startsWith('bearer ')) {
+					token = authHeader.slice(7).trim();
+				}
 			}
 		} else if (tokenSource === 'customHeader') {
 			const headerName = this.getNodeParameter('customHeaderName') as string;
-			const headerVal = req.headers[headerName.toLowerCase()];
-			if (headerVal) {
-				token = typeof headerVal === 'string' ? headerVal : String(headerVal);
+			// Try rawHeaders first
+			const rawHeaders: string[] = (req as any).rawHeaders || [];
+			for (let i = 0; i < rawHeaders.length; i += 2) {
+				if (rawHeaders[i] && rawHeaders[i].toLowerCase() === headerName.toLowerCase()) {
+					token = rawHeaders[i + 1] || '';
+					break;
+				}
+			}
+			// Fallback
+			if (!token) {
+				const headerVal = req.headers[headerName.toLowerCase()];
+				if (headerVal) {
+					token = typeof headerVal === 'string' ? headerVal : String(headerVal);
+				}
 			}
 		}
 
