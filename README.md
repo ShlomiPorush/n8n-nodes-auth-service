@@ -1,18 +1,13 @@
 # n8n-nodes-auth-service
 
-Custom [n8n](https://n8n.io/) community node for integrating with an **Auth Service** instance.
+Custom [n8n](https://n8n.io/) community nodes for integrating with an **Auth Service** instance.
 
-## Features
+This package provides **two nodes**:
 
-| Operation | Description | Required Scope |
+| Node | Type | Description |
 |---|---|---|
-| **Validate Token** | Check if a token is valid for a specific zone and permission level | _None (public endpoint)_ |
-| **Create Zone** | Create a new zone (area) in the Auth Service | `zones:write` |
-| **Create Token** | Create a new API token with specific zone grants | `tokens:write` |
-
-- **Dynamic zone list** — zones are loaded from the Auth Service API automatically (used in Validate and Create Token)
-- **Permission levels** — `read`, `write`, `delete`, `all`
-- **Credential test** — connection is verified automatically when saving credentials
+| **Auth Service** | Action | Full API access — validate tokens, manage zones & tokens |
+| **Auth Webhook** | Trigger | Webhook with built-in token validation |
 
 ## Installation
 
@@ -31,98 +26,80 @@ npm install n8n-nodes-auth-service
 # Restart n8n
 ```
 
-### Development / Local
-
-```bash
-git clone https://github.com/ShlomiPorush/n8n-nodes-auth-service.git
-cd n8n-nodes-auth-service
-npm install
-npm run build
-
-# Link to your local n8n
-npm link
-cd ~/.n8n
-npm link n8n-nodes-auth-service
-# Restart n8n
-```
-
 ## Setup
 
-1. Add an **Auth Service API** credential in n8n:
-   - **Base URL** — your Auth Service address (e.g. `http://auth:8080`)
-   - **API Key** — an API key from the Auth Service dashboard (or the `ADMIN_API_KEY` env var)
+Add an **Auth Service API** credential in n8n:
+- **Base URL** — your Auth Service address (e.g. `http://auth:8080`)
+- **API Key** — an API key from the Auth Service dashboard or the `ADMIN_API_KEY` env var
 
-2. The credential is automatically tested on save — it will call `GET /tokens/zones` to verify connectivity and permissions.
+The credential is automatically tested on save.
 
-## Operations
+---
 
-### Validate Token
+## Auth Service Node
 
-Checks if a given token has access to a zone at a certain permission level.
+Full API access to your Auth Service instance.
 
-| Parameter | Description |
-|---|---|
-| **Token** | The API token to validate |
-| **Zone** | Zone to validate against (loaded dynamically) |
-| **Permission Level** | `read`, `write`, `delete`, or `all` |
+### Operations
+
+| Operation | Description | Required Scope |
+|---|---|---|
+| **Validate Token** | Check if a token is valid for a zone + permission level | _(public)_ |
+| **List Zones** | Get all zones | `zones:read` |
+| **Create Zone** | Create a new zone | `zones:write` |
+| **List Tokens** | Get all tokens | `tokens:read` |
+| **Create Token** | Create a new token with zone grants | `tokens:write` |
+| **Edit Token** | Update name, grants, active status, or expiration | `tokens:write` |
+| **Delete Token** | Delete a token | `tokens:write` |
+
+### Example
+
+**Validate a token:**
+```
+Webhook → Auth Service (Validate Token) → IF (result == true) → Continue
+```
 
 **Output:**
-
 ```json
 { "result": true }
 ```
 
-> The `/validate` endpoint is public — no API key is required.
+---
 
-### Create Zone
+## Auth Webhook Node
 
-Creates a new zone in the Auth Service.
+A webhook trigger that **automatically validates tokens** before executing the workflow. Replaces the common pattern of:
 
-| Parameter | Description |
+```
+Webhook → Auth Service → IF → Continue / 403
+```
+
+With a single node:
+
+```
+Auth Webhook → Continue (already validated)
+```
+
+### Configuration
+
+| Setting | Description |
 |---|---|
-| **Zone Name** | Name for the new zone (e.g. `orders`, `billing`) |
-| **Description** | Optional description |
+| **HTTP Method** | GET, POST, PUT, PATCH, DELETE |
+| **Path** | Webhook URL path |
+| **Response Mode** | On Received / Using Respond to Webhook Node |
+| **Auth Zone** | Zone to validate against (dynamic dropdown) |
+| **Auth Level** | Read / Write / Delete / All |
+| **Token Source** | Authorization Header (Bearer) or Custom Header / Field |
 
-**Requires** the API key to have the `zones:write` scope.
+### Behavior
 
-### Create Token
+- **Valid token** → workflow executes, receives `{ headers, params, query, body }`
+- **Invalid token** → responds `403 Forbidden`, workflow does NOT execute
+- **No token** → responds `403 Forbidden`
 
-Creates a new API token with specific zone/level grants.
-
-| Parameter | Description |
-|---|---|
-| **Token Name** | Label for the new token |
-| **Grants** | Zone + permission level pairs (dynamic zone dropdown) |
-| **Expires At** | Optional expiration date (ISO 8601) |
-
-**Requires** the API key to have the `tokens:write` scope.
-
-## Example Workflows
-
-### Token Validation
-
-```
-Webhook → Auth Service (Validate) → IF (result == true) → Continue / Respond 403
-```
-
-### Automated Zone + Token Setup
-
-```
-Trigger → Auth Service (Create Zone) → Auth Service (Create Token)
-```
-
-## API Endpoints Used
-
-| Endpoint | Method | Auth | Purpose |
-|---|---|---|---|
-| `/tokens/zones` | `GET` | API Key (`zones:read`) | Load zone list for dropdowns |
-| `/validate` | `POST` | None | Validate a token |
-| `/tokens/zones` | `POST` | API Key (`zones:write`) | Create a zone |
-| `/tokens` | `POST` | API Key (`tokens:write`) | Create a token |
+---
 
 ## API Key Scopes
-
-API keys created in the Auth Service dashboard can have granular scopes:
 
 | Scope | Description |
 |---|---|
@@ -132,7 +109,7 @@ API keys created in the Auth Service dashboard can have granular scopes:
 | `zones:read` | List zones |
 | `zones:write` | Create zones |
 
-The `ADMIN_API_KEY` environment variable always has full access to all scopes.
+The `ADMIN_API_KEY` environment variable always has full access.
 
 ## License
 
