@@ -41,10 +41,7 @@ export class AuthWebhook implements INodeType {
 		],
 
 		properties: [
-			// ═══════════════════════════════════════
-			// WEBHOOK SETTINGS (mirroring built-in)
-			// ═══════════════════════════════════════
-
+			// ── Webhook Settings ──
 			{
 				displayName: 'HTTP Method',
 				name: 'httpMethod',
@@ -68,13 +65,10 @@ export class AuthWebhook implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'webhook-path',
-				description: 'The path to listen on',
+				description: 'The path to listen on (the full path after /webhook/)',
 			},
 
-			// ═══════════════════════════════════════
-			// AUTH SETTINGS
-			// ═══════════════════════════════════════
-
+			// ── Auth Settings ──
 			{
 				displayName: 'Auth Zone',
 				name: 'authZone',
@@ -129,10 +123,7 @@ export class AuthWebhook implements INodeType {
 				displayOptions: { show: { tokenSource: ['customHeader'] } },
 			},
 
-			// ═══════════════════════════════════════
-			// RESPONSE SETTINGS (mirroring built-in)
-			// ═══════════════════════════════════════
-
+			// ── Response Settings ──
 			{
 				displayName: 'Respond',
 				name: 'responseMode',
@@ -162,185 +153,7 @@ export class AuthWebhook implements INodeType {
 					maxValue: 599,
 				},
 				default: 200,
-				description: 'The HTTP Response code to return',
-			},
-			{
-				displayName: 'Response Data',
-				name: 'responseData',
-				type: 'options',
-				displayOptions: {
-					show: {
-						responseMode: ['lastNode'],
-					},
-				},
-				options: [
-					{
-						name: 'All Entries',
-						value: 'allEntries',
-						description: 'Returns all the entries of the last node. Always returns an array.',
-					},
-					{
-						name: 'First Entry JSON',
-						value: 'firstEntryJson',
-						description: 'Returns the JSON data of the first entry of the last node. Always returns a JSON object.',
-					},
-					{
-						name: 'First Entry Binary',
-						value: 'firstEntryBinary',
-						description: 'Returns the binary data of the first entry of the last node. Always returns a binary file.',
-					},
-					{
-						name: 'No Response Body',
-						value: 'noData',
-						description: 'Returns without a body',
-					},
-				],
-				default: 'firstEntryJson',
-				description: 'What data should be returned. If it should return all items as an array or only the first item as object.',
-			},
-			{
-				displayName: 'Property Name',
-				name: 'responseBinaryPropertyName',
-				type: 'string',
-				required: true,
-				default: 'data',
-				displayOptions: {
-					show: {
-						responseData: ['firstEntryBinary'],
-					},
-				},
-				description: 'Name of the binary property to return',
-			},
-
-			// ═══════════════════════════════════════
-			// OPTIONS (mirroring built-in)
-			// ═══════════════════════════════════════
-
-			{
-				displayName: 'Options',
-				name: 'options',
-				type: 'collection',
-				placeholder: 'Add option',
-				default: {},
-				options: [
-					{
-						displayName: 'Field Name for Binary Data',
-						name: 'binaryPropertyName',
-						type: 'string',
-						default: 'data',
-						description: 'The name of the output field to put any binary file data in',
-					},
-					{
-						displayName: 'Ignore Bots',
-						name: 'ignoreBots',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to ignore requests from bots like link previewers and web crawlers',
-					},
-					{
-						displayName: 'IP(s) Allowlist',
-						name: 'ipWhitelist',
-						type: 'string',
-						placeholder: 'e.g. 127.0.0.1, 192.168.1.0/24',
-						default: '',
-						description: 'Comma-separated list of allowed IP addresses. Leave empty to allow all IPs.',
-					},
-					{
-						displayName: 'No Response Body',
-						name: 'noResponseBody',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to send any body in the response',
-						displayOptions: {
-							show: {
-								'/responseMode': ['onReceived'],
-							},
-						},
-					},
-					{
-						displayName: 'Raw Body',
-						name: 'rawBody',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to return the raw body',
-					},
-					{
-						displayName: 'Response Data',
-						name: 'responseData',
-						type: 'string',
-						displayOptions: {
-							show: {
-								'/responseMode': ['onReceived'],
-							},
-							hide: {
-								noResponseBody: [true],
-							},
-						},
-						default: '',
-						placeholder: 'success',
-						description: 'Custom response data to send',
-					},
-					{
-						displayName: 'Response Content-Type',
-						name: 'responseContentType',
-						type: 'string',
-						displayOptions: {
-							show: {
-								'/responseData': ['firstEntryJson'],
-								'/responseMode': ['lastNode'],
-							},
-						},
-						default: '',
-						placeholder: 'application/xml',
-						description: 'Set a custom content-type to return if another one as the "application/json" should be returned',
-					},
-					{
-						displayName: 'Response Headers',
-						name: 'responseHeaders',
-						placeholder: 'Add Response Header',
-						description: 'Add headers to the webhook response',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						default: {},
-						options: [
-							{
-								name: 'entries',
-								displayName: 'Entries',
-								values: [
-									{
-										displayName: 'Name',
-										name: 'name',
-										type: 'string',
-										default: '',
-										description: 'Name of the header',
-									},
-									{
-										displayName: 'Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-										description: 'Value of the header',
-									},
-								],
-							},
-						],
-					},
-					{
-						displayName: 'Property Name',
-						name: 'responsePropertyName',
-						type: 'string',
-						displayOptions: {
-							show: {
-								'/responseData': ['firstEntryJson'],
-								'/responseMode': ['lastNode'],
-							},
-						},
-						default: 'data',
-						description: 'Name of the property to return the data of instead of the whole JSON',
-					},
-				],
+				description: 'The HTTP response code to return on success',
 			},
 		],
 	};
@@ -382,7 +195,6 @@ export class AuthWebhook implements INodeType {
 		const authZone = this.getNodeParameter('authZone') as string;
 		const authLevel = this.getNodeParameter('authLevel') as string;
 		const tokenSource = this.getNodeParameter('tokenSource') as string;
-		const options = this.getNodeParameter('options', {}) as IDataObject;
 
 		// ── Extract token ──
 		let token = '';
@@ -399,12 +211,13 @@ export class AuthWebhook implements INodeType {
 			}
 		}
 
-		// ── Validate token against Auth Service ──
+		// ── No token → 403 ──
 		if (!token) {
 			resp.status(403).json({ error: 'Forbidden', message: 'No authentication token provided' });
 			return { noWebhookResponse: true };
 		}
 
+		// ── Validate token against Auth Service ──
 		let isValid = false;
 		try {
 			const validateResult = await this.helpers.httpRequest({
@@ -420,36 +233,29 @@ export class AuthWebhook implements INodeType {
 			isValid = false;
 		}
 
+		// ── Invalid token → 403 ──
 		if (!isValid) {
 			resp.status(403).json({ error: 'Forbidden', message: 'Token validation failed' });
 			return { noWebhookResponse: true };
 		}
 
-		// ── Token valid — build output identical to built-in Webhook node ──
+		// ── Token valid — pass request data to workflow ──
 		const body = this.getBodyData();
 		const headers = this.getHeaderData();
 		const query = this.getQueryData();
 
-		const returnItem: IDataObject = {
-			headers,
-			params: req.params,
-			query,
-			body,
-		};
-
-		// Handle binary data
-		if (req.contentType !== 'multipart/form-data' && options.rawBody) {
-			returnItem.rawBody = (req as any).rawBody;
-		}
-
-		// File uploads
-		if (req.files && Object.keys(req.files as object).length > 0) {
-			returnItem.files = req.files as any;
-		}
-
 		return {
 			workflowData: [
-				[{ json: returnItem }],
+				[
+					{
+						json: {
+							headers,
+							params: req.params,
+							query,
+							body,
+						} as IDataObject,
+					},
+				],
 			],
 		};
 	}
