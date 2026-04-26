@@ -117,25 +117,13 @@ export class RespondToAuthWebhook implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		// Find the __authWebhookResponseId from the input chain
-		let responseId: string | undefined;
-		for (const item of items) {
-			if (item.json?.__authWebhookResponseId) {
-				responseId = item.json.__authWebhookResponseId as string;
-				break;
-			}
-		}
+		// Use the execution ID to find the pending response from Auth Webhook
+		const executionId = this.getExecutionId();
 
-		if (!responseId) {
-			throw new Error(
-				'No Auth Webhook response found. Make sure this node is connected downstream from an Auth Webhook node set to "Using \'Respond to Auth Webhook\' Node" mode.',
-			);
-		}
-
-		const resp = consumeResponse(responseId);
+		const resp = consumeResponse(executionId);
 		if (!resp) {
 			throw new Error(
-				'Auth Webhook response has already been consumed or timed out.',
+				'No pending Auth Webhook response found. Make sure the Auth Webhook node is set to "Using \'Respond to Auth Webhook\' Node" mode.',
 			);
 		}
 
@@ -158,16 +146,11 @@ export class RespondToAuthWebhook implements INodeType {
 		let responseBody: unknown;
 		switch (respondWith) {
 			case 'allIncomingItems':
-				responseBody = items.map((i) => {
-					const { __authWebhookResponseId, ...rest } = i.json;
-					return rest;
-				});
+				responseBody = items.map((i) => i.json);
 				break;
-			case 'firstIncomingItem': {
-				const { __authWebhookResponseId, ...rest } = items[0].json;
-				responseBody = rest;
+			case 'firstIncomingItem':
+				responseBody = items[0].json;
 				break;
-			}
 			case 'json':
 				responseBody = JSON.parse(this.getNodeParameter('responseBody', 0) as string);
 				break;
