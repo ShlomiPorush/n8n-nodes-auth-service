@@ -43,7 +43,7 @@ export class AuthServiceApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.baseUrl}}',
-			url: '/tokens/zones',
+			url: '/tokens/ping',
 			method: 'GET',
 		},
 	};
