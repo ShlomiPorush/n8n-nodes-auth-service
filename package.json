@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-auth-service",
-  "version": "0.2.9",
+  "version": "0.3.0",
   "description": "n8n community node to validate tokens against an Auth Service instance",
   "keywords": [
     "n8n-community-node-package",
@@ -37,5 +37,9 @@
   },
   "peerDependencies": {
     "n8n-workflow": "*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ShlomiPorush/n8n-nodes-auth-service"
   }
 }
