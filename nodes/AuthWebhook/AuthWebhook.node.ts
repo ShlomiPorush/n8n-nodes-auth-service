@@ -7,7 +7,6 @@ import type {
 	ILoadOptionsFunctions,
 	IDataObject,
 } from 'n8n-workflow';
-import { storeResponse } from '../responseStore';
 
 export class AuthWebhook implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,8 +34,7 @@ export class AuthWebhook implements INodeType {
 			{
 				name: 'default',
 				httpMethod: '={{$parameter["httpMethod"] || "POST"}}',
-				// Map responseNode → onReceived for n8n core (we handle the response ourselves)
-				responseMode: '={{$parameter["responseMode"] === "responseNode" ? "onReceived" : $parameter["responseMode"]}}',
+				responseMode: '={{$parameter["responseMode"]}}',
 				path: '={{$parameter["path"]}}',
 				isFullPath: true,
 			},
@@ -328,7 +326,6 @@ export class AuthWebhook implements INodeType {
 		}
 
 		// ── Token valid — build output ──
-		const responseMode = this.getNodeParameter('responseMode') as string;
 		const body = this.getBodyData();
 		const headers = { ...(this.getHeaderData() as IDataObject) };
 		const query = this.getQueryData();
@@ -347,21 +344,6 @@ export class AuthWebhook implements INodeType {
 			query,
 			body,
 		};
-
-		// For responseNode mode: store the response object so "Respond to Auth Webhook" can use it
-		if (responseMode === 'responseNode') {
-			// Use the n8n execution ID as the key — available in both webhook and execute contexts
-			const executionId = (this as any).getExecutionId?.() as string | undefined;
-			if (!executionId) {
-				resp.status(500).json({ error: 'Internal Error', message: 'Could not determine execution ID' });
-				return { noWebhookResponse: true };
-			}
-			storeResponse(executionId, resp);
-			return {
-				noWebhookResponse: true,
-				workflowData: [[{ json: outputData }]],
-			};
-		}
 
 		return {
 			workflowData: [[{ json: outputData }]],

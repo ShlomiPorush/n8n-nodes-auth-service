@@ -4,7 +4,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { consumeResponse } from '../responseStore';
 
 export class RespondToAuthWebhook implements INodeType {
 	description: INodeTypeDescription = {
@@ -117,13 +116,13 @@ export class RespondToAuthWebhook implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		// Use the execution ID to find the pending response from Auth Webhook
-		const executionId = this.getExecutionId();
-
-		const resp = consumeResponse(executionId);
+		// Access the response object through n8n's execution context
+		// (same mechanism the built-in "Respond to Webhook" uses)
+		const resp = (this as any).getResponseObject?.();
 		if (!resp) {
 			throw new Error(
-				'No pending Auth Webhook response found. Make sure the Auth Webhook node is set to "Using \'Respond to Auth Webhook\' Node" mode.',
+				'No pending webhook response found. Make sure the Auth Webhook node is set to '
+				+ '"Using \'Respond to Auth Webhook\' Node" mode and this node is in the same workflow.',
 			);
 		}
 

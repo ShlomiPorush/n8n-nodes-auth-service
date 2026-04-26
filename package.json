@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-auth-service",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "n8n community node to validate tokens against an Auth Service instance",
   "keywords": [
     "n8n-community-node-package",
