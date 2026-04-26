@@ -36,7 +36,7 @@ export class AuthWebhook implements INodeType {
 				httpMethod: '={{$parameter["httpMethod"] || "POST"}}',
 				responseMode: '={{$parameter["responseMode"]}}',
 				path: '={{$parameter["path"]}}',
-				isFullPath: false,
+				isFullPath: true,
 			},
 		],
 
