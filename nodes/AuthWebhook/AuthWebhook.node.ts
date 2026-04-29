@@ -220,18 +220,6 @@ export class AuthWebhook implements INodeType {
 						description: 'Whether form-data files should be added to binary output',
 					},
 					{
-						displayName: 'Field Name for Binary Data',
-						name: 'binaryPropertyName',
-						type: 'string',
-						default: 'data',
-						description: 'Name of the binary output field that will contain uploaded files',
-						displayOptions: {
-							show: {
-								binaryData: [true],
-							},
-						},
-					},
-					{
 						displayName: 'Response Data',
 						name: 'responseData',
 						type: 'string',
@@ -348,10 +336,9 @@ export class AuthWebhook implements INodeType {
 		}
 
 		// ── Token valid — build output ──
-		const rawBody = this.getBodyData() as IDataObject;
+		const rawBody = (this.getBodyData() ?? {}) as IDataObject;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 		const binaryData = options.binaryData === true;
-		const binaryPropertyName = ((options.binaryPropertyName as string) || 'data').trim() || 'data';
 		let body: IDataObject = rawBody;
 
 		// Normalize multipart payloads to match n8n Webhook node shape:
@@ -370,7 +357,10 @@ export class AuthWebhook implements INodeType {
 			};
 		}
 
-		const files = body.files as IDataObject | undefined;
+		const files =
+			body && typeof body === 'object' && !Array.isArray(body)
+				? (body.files as IDataObject | undefined)
+				: undefined;
 		const headers = { ...(this.getHeaderData() as IDataObject) };
 		const query = this.getQueryData();
 
@@ -405,11 +395,11 @@ export class AuthWebhook implements INodeType {
 
 					const fileBuffer = await readFile(filepath);
 					const normalizedFileKey = String(fileKey || '').trim();
-					const baseFieldName = normalizedFileKey || binaryPropertyName;
+					const baseFieldName = normalizedFileKey || 'data';
 					const binaryFieldName =
 						fileEntries.length > 1
 							? `${baseFieldName}_${entryIndex}`
-							: baseFieldName || (fallbackIndex === 0 ? 'data' : `data_${fallbackIndex}`);
+							: baseFieldName || `data_${fallbackIndex}`;
 					binaryOutput[binaryFieldName] = await this.helpers.prepareBinaryData(
 						fileBuffer,
 						(file.originalFilename as string) || (file.newFilename as string) || binaryFieldName,
