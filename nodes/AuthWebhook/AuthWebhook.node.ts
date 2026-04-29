@@ -216,7 +216,7 @@ export class AuthWebhook implements INodeType {
 						displayName: 'Binary Data',
 						name: 'binaryData',
 						type: 'boolean',
-						default: false,
+						default: true,
 						description: 'Whether form-data files should be added to binary output',
 					},
 					{
@@ -337,8 +337,7 @@ export class AuthWebhook implements INodeType {
 
 		// ── Token valid — build output ──
 		const rawBody = (this.getBodyData() ?? {}) as IDataObject;
-		const options = this.getNodeParameter('options', {}) as IDataObject;
-		const binaryData = options.binaryData === true;
+		const binaryData = true;
 		let body: IDataObject = rawBody;
 
 		// Normalize multipart payloads to match n8n Webhook node shape:
