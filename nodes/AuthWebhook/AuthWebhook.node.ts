@@ -6,7 +6,10 @@ import type {
 	INodePropertyOptions,
 	ILoadOptionsFunctions,
 	IDataObject,
+	INodeExecutionData,
+	IBinaryKeyData,
 } from 'n8n-workflow';
+import { readFile } from 'node:fs/promises';
 
 export class AuthWebhook implements INodeType {
 	description: INodeTypeDescription = {
@@ -210,6 +213,25 @@ export class AuthWebhook implements INodeType {
 						],
 					},
 					{
+						displayName: 'Binary Data',
+						name: 'binaryData',
+						type: 'boolean',
+						default: false,
+						description: 'Whether form-data files should be added to binary output',
+					},
+					{
+						displayName: 'Field Name for Binary Data',
+						name: 'binaryPropertyName',
+						type: 'string',
+						default: 'data',
+						description: 'Name of the binary output field that will contain uploaded files',
+						displayOptions: {
+							show: {
+								binaryData: [true],
+							},
+						},
+					},
+					{
 						displayName: 'Response Data',
 						name: 'responseData',
 						type: 'string',
@@ -327,6 +349,9 @@ export class AuthWebhook implements INodeType {
 
 		// ── Token valid — build output ──
 		const rawBody = this.getBodyData() as IDataObject;
+		const options = this.getNodeParameter('options', {}) as IDataObject;
+		const binaryData = options.binaryData === true;
+		const binaryPropertyName = ((options.binaryPropertyName as string) || 'data').trim() || 'data';
 		let body: IDataObject = rawBody;
 
 		// Normalize multipart payloads to match n8n Webhook node shape:
@@ -344,6 +369,8 @@ export class AuthWebhook implements INodeType {
 				...(rawBody.files ? { files: rawBody.files } : {}),
 			};
 		}
+
+		const files = body.files as IDataObject | undefined;
 		const headers = { ...(this.getHeaderData() as IDataObject) };
 		const query = this.getQueryData();
 
@@ -362,8 +389,46 @@ export class AuthWebhook implements INodeType {
 			body,
 		};
 
+		const outputItem: INodeExecutionData = { json: outputData };
+		if (binaryData && files && typeof files === 'object') {
+			const binaryOutput: IBinaryKeyData = {};
+			let fallbackIndex = 0;
+
+			for (const [fileKey, fileValue] of Object.entries(files)) {
+				const fileEntries = Array.isArray(fileValue) ? fileValue : [fileValue];
+				for (let entryIndex = 0; entryIndex < fileEntries.length; entryIndex++) {
+					const fileEntry = fileEntries[entryIndex];
+					if (!fileEntry || typeof fileEntry !== 'object') continue;
+					const file = fileEntry as IDataObject;
+					const filepath = file.filepath as string | undefined;
+					if (!filepath) continue;
+
+					const fileBuffer = await readFile(filepath);
+					const normalizedFileKey = String(fileKey || '').trim();
+					const baseFieldName = normalizedFileKey || binaryPropertyName;
+					const binaryFieldName =
+						fileEntries.length > 1
+							? `${baseFieldName}_${entryIndex}`
+							: baseFieldName || (fallbackIndex === 0 ? 'data' : `data_${fallbackIndex}`);
+					binaryOutput[binaryFieldName] = await this.helpers.prepareBinaryData(
+						fileBuffer,
+						(file.originalFilename as string) || (file.newFilename as string) || binaryFieldName,
+						file.mimetype as string | undefined,
+					);
+					fallbackIndex++;
+				}
+			}
+
+			if (Object.keys(binaryOutput).length > 0) {
+				if (outputData.body && typeof outputData.body === 'object' && !Array.isArray(outputData.body)) {
+					delete (outputData.body as IDataObject).files;
+				}
+				outputItem.binary = binaryOutput;
+			}
+		}
+
 		return {
-			workflowData: [[{ json: outputData }]],
+			workflowData: [[outputItem]],
 		};
 	}
 }
