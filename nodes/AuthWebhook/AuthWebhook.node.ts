@@ -326,7 +326,24 @@ export class AuthWebhook implements INodeType {
 		}
 
 		// ── Token valid — build output ──
-		const body = this.getBodyData();
+		const rawBody = this.getBodyData() as IDataObject;
+		let body: IDataObject = rawBody;
+
+		// Normalize multipart payloads to match n8n Webhook node shape:
+		// move form fields from body.data to body root while preserving files.
+		if (
+			rawBody &&
+			typeof rawBody === 'object' &&
+			'data' in rawBody &&
+			rawBody.data &&
+			typeof rawBody.data === 'object' &&
+			!Array.isArray(rawBody.data)
+		) {
+			body = {
+				...(rawBody.data as IDataObject),
+				...(rawBody.files ? { files: rawBody.files } : {}),
+			};
+		}
 		const headers = { ...(this.getHeaderData() as IDataObject) };
 		const query = this.getQueryData();
 
