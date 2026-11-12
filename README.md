@@ -163,7 +163,7 @@ API keys can be created in the Auth Service dashboard with granular scopes:
 
 | Scope | Description |
 |---|---|
-| `validate` | Validate tokens via the API |
+| `validate` | Not required by any endpoint. `/validate` is public and needs no API key. |
 | `tokens:read` | List tokens and zones |
 | `tokens:write` | Create, edit, delete tokens |
 | `zones:read` | List zones |
