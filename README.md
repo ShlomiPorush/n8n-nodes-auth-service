@@ -148,7 +148,9 @@ Auth Webhook → Continue (token already validated)
 
 ### File uploads
 
-Files sent as `multipart/form-data` reach the workflow as binary data, one property per form field. The form fields are in `body`. Other request bodies never produce binary data, so a `files` key in a JSON body is plain data.
+Files sent as `multipart/form-data` reach the workflow as binary data. Each file field becomes a binary property with the field's name. When a field holds several files, the properties are named `<field>_0`, `<field>_1`, and so on. The form fields are in `body`. Other request bodies never produce binary data, so a `files` key in a JSON body is plain data.
+
+Do not add the **Binary Data** option, or turn it off. When it is on, which is its value when you add it, n8n does not parse the request body, so the workflow receives an empty `body` and no files.
 
 n8n saves each upload to a temporary file first. n8n 2.39 and later delete these files after each request. On older n8n versions they stay in the temporary directory.
 
