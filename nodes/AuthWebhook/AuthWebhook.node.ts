@@ -9,7 +9,6 @@ import type {
 	INodeExecutionData,
 	IBinaryKeyData,
 } from 'n8n-workflow';
-import { readFile } from 'node:fs/promises';
 
 export class AuthWebhook implements INodeType {
 	description: INodeTypeDescription = {
@@ -217,7 +216,8 @@ export class AuthWebhook implements INodeType {
 						name: 'binaryData',
 						type: 'boolean',
 						default: true,
-						description: 'Whether form-data files should be added to binary output',
+						description:
+							'Whether n8n should skip parsing the request body. Leave this off to receive form-data files as binary data. When on, the workflow receives an empty body and no files.',
 					},
 					{
 						displayName: 'Response Data',
@@ -337,29 +337,30 @@ export class AuthWebhook implements INodeType {
 
 		// ── Token valid — build output ──
 		const rawBody = (this.getBodyData() ?? {}) as IDataObject;
-		const binaryData = true;
-		let body: IDataObject = rawBody;
+		const isObject = (value: unknown): value is IDataObject =>
+			!!value && typeof value === 'object' && !Array.isArray(value);
 
-		// Normalize multipart payloads to match n8n Webhook node shape:
-		// move form fields from body.data to body root while preserving files.
-		if (
-			rawBody &&
-			typeof rawBody === 'object' &&
-			'data' in rawBody &&
-			rawBody.data &&
-			typeof rawBody.data === 'object' &&
-			!Array.isArray(rawBody.data)
-		) {
+		// Only a multipart request carries uploaded files. n8n parses it into
+		// { data: fields, files: parsed uploads } and sets req.contentType; n8n's own
+		// Webhook node uses the same check. Any other body (JSON, form-urlencoded,
+		// text, XML) comes from the caller, so a `files` key in it is plain data and
+		// is never read from disk.
+		const isMultipart =
+			(req as { contentType?: string }).contentType === 'multipart/form-data';
+
+		let body: IDataObject = rawBody;
+		let files: IDataObject | undefined;
+
+		if (isMultipart) {
+			body = isObject(rawBody.data) ? rawBody.data : {};
+			files = isObject(rawBody.files) ? rawBody.files : undefined;
+		} else if (isObject(rawBody) && isObject(rawBody.data)) {
+			// A top-level object `data` replaces the body (kept for existing workflows).
 			body = {
-				...(rawBody.data as IDataObject),
+				...rawBody.data,
 				...(rawBody.files ? { files: rawBody.files } : {}),
 			};
 		}
-
-		const files =
-			body && typeof body === 'object' && !Array.isArray(body)
-				? (body.files as IDataObject | undefined)
-				: undefined;
 		const headers = { ...(this.getHeaderData() as IDataObject) };
 		const query = this.getQueryData();
 
@@ -379,39 +380,33 @@ export class AuthWebhook implements INodeType {
 		};
 
 		const outputItem: INodeExecutionData = { json: outputData };
-		if (binaryData && files && typeof files === 'object') {
+		if (files) {
 			const binaryOutput: IBinaryKeyData = {};
-			let fallbackIndex = 0;
 
 			for (const [fileKey, fileValue] of Object.entries(files)) {
 				const fileEntries = Array.isArray(fileValue) ? fileValue : [fileValue];
 				for (let entryIndex = 0; entryIndex < fileEntries.length; entryIndex++) {
 					const fileEntry = fileEntries[entryIndex];
-					if (!fileEntry || typeof fileEntry !== 'object') continue;
-					const file = fileEntry as IDataObject;
-					const filepath = file.filepath as string | undefined;
-					if (!filepath) continue;
+					if (!isObject(fileEntry)) continue;
+					const file = fileEntry;
+					const filepath = file.filepath;
+					if (typeof filepath !== 'string' || !filepath) continue;
 
-					const fileBuffer = await readFile(filepath);
 					const normalizedFileKey = String(fileKey || '').trim();
 					const baseFieldName = normalizedFileKey || 'data';
 					const binaryFieldName =
 						fileEntries.length > 1
 							? `${baseFieldName}_${entryIndex}`
-							: baseFieldName || `data_${fallbackIndex}`;
-					binaryOutput[binaryFieldName] = await this.helpers.prepareBinaryData(
-						fileBuffer,
+							: baseFieldName;
+					binaryOutput[binaryFieldName] = await this.nodeHelpers.copyBinaryFile(
+						filepath,
 						(file.originalFilename as string) || (file.newFilename as string) || binaryFieldName,
 						file.mimetype as string | undefined,
 					);
-					fallbackIndex++;
 				}
 			}
 
 			if (Object.keys(binaryOutput).length > 0) {
-				if (outputData.body && typeof outputData.body === 'object' && !Array.isArray(outputData.body)) {
-					delete (outputData.body as IDataObject).files;
-				}
 				outputItem.binary = binaryOutput;
 			}
 		}
