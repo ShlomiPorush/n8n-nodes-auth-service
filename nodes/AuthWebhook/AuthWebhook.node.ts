@@ -216,7 +216,8 @@ export class AuthWebhook implements INodeType {
 						name: 'binaryData',
 						type: 'boolean',
 						default: true,
-						description: 'Whether form-data files should be added to binary output',
+						description:
+							'Whether n8n should skip parsing the request body. Leave this off to receive form-data files as binary data. When on, the workflow receives an empty body and no files.',
 					},
 					{
 						displayName: 'Response Data',
