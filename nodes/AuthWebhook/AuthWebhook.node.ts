@@ -341,8 +341,9 @@ export class AuthWebhook implements INodeType {
 
 		// Only a multipart request carries uploaded files. n8n parses it into
 		// { data: fields, files: parsed uploads } and sets req.contentType; n8n's own
-		// Webhook node uses the same check. Any other body is client JSON, so a
-		// `files` key in it is plain data and is never read from disk.
+		// Webhook node uses the same check. Any other body (JSON, form-urlencoded,
+		// text, XML) comes from the caller, so a `files` key in it is plain data and
+		// is never read from disk.
 		const isMultipart =
 			(req as { contentType?: string }).contentType === 'multipart/form-data';
 
@@ -380,7 +381,6 @@ export class AuthWebhook implements INodeType {
 		const outputItem: INodeExecutionData = { json: outputData };
 		if (files) {
 			const binaryOutput: IBinaryKeyData = {};
-			let fallbackIndex = 0;
 
 			for (const [fileKey, fileValue] of Object.entries(files)) {
 				const fileEntries = Array.isArray(fileValue) ? fileValue : [fileValue];
@@ -396,13 +396,12 @@ export class AuthWebhook implements INodeType {
 					const binaryFieldName =
 						fileEntries.length > 1
 							? `${baseFieldName}_${entryIndex}`
-							: baseFieldName || `data_${fallbackIndex}`;
+							: baseFieldName;
 					binaryOutput[binaryFieldName] = await this.nodeHelpers.copyBinaryFile(
 						filepath,
 						(file.originalFilename as string) || (file.newFilename as string) || binaryFieldName,
 						file.mimetype as string | undefined,
 					);
-					fallbackIndex++;
 				}
 			}
 

@@ -146,6 +146,12 @@ Auth Webhook → Continue (token already validated)
 4. **Valid token** → workflow executes, next node receives `{ headers, params, query, body }`
 5. **Invalid/missing token** → responds `403 Forbidden`, workflow does **NOT** execute
 
+### File uploads
+
+Files sent as `multipart/form-data` reach the workflow as binary data, one property per form field. The form fields are in `body`. Other request bodies never produce binary data, so a `files` key in a JSON body is plain data.
+
+n8n saves each upload to a temporary file first. n8n 2.39 and later delete these files after each request. On older n8n versions they stay in the temporary directory.
+
 ### Example: calling the webhook
 
 ```bash

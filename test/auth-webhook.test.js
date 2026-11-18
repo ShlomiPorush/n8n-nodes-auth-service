@@ -3,13 +3,15 @@
 // Run `npm run build` first: these tests load the compiled node from dist/.
 const { test, after } = require('node:test');
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
 const { AuthWebhook } = require('../dist/nodes/AuthWebhook/AuthWebhook.node.js');
 
-const VALID_TOKEN = 'valid-token';
+// The mocked Auth Service accepts only this token, generated for each run.
+const VALID_TOKEN = crypto.randomBytes(24).toString('base64url');
 
 const tempDirs = [];
 after(() => {
