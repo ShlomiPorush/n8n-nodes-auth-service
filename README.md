@@ -14,25 +14,7 @@ Custom [n8n](https://n8n.io/) community nodes for integrating with [**Auth Servi
 
 ### Quick Setup
 
-```yaml
-# docker-compose.yml
-services:
-  redis:
-    image: redis:7-alpine
-    command: redis-server --requirepass changeme
-
-  auth-service:
-    image: ghcr.io/shlomiporush/auth-service:latest
-    ports:
-      - "8080:8080"
-    environment:
-      REDIS_URL: redis://:changeme@redis:6379
-      ADMIN_API_KEY: your-secret-api-key
-    depends_on:
-      - redis
-```
-
-Start with `docker compose up -d`, then open `http://localhost:8080` to set up your admin account.
+To install Auth Service, follow the [Quick Start](https://github.com/ShlomiPorush/auth-master#quick-start) in its repository. Its setup script creates a private `.env` file with new random secrets. The service does not start while a required secret is missing or has a published value.
 
 For full documentation, see the [Auth Service repository](https://github.com/ShlomiPorush/auth-master).
 
