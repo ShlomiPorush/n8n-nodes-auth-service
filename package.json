@@ -16,7 +16,8 @@
     "build": "tsc && node -e \"const fs=require('fs');const p=require('path');['AuthService','AuthWebhook','RespondToAuthWebhook'].forEach(n=>{fs.mkdirSync(p.join('dist','nodes',n),{recursive:true})});fs.cpSync(p.join('nodes','AuthService','authservice.svg'),p.join('dist','nodes','AuthService','authservice.svg'));fs.cpSync(p.join('nodes','AuthWebhook','authwebhook.svg'),p.join('dist','nodes','AuthWebhook','authwebhook.svg'));fs.cpSync(p.join('nodes','RespondToAuthWebhook','respondtoauthwebhook.svg'),p.join('dist','nodes','RespondToAuthWebhook','respondtoauthwebhook.svg'));\"",
     "dev": "tsc --watch",
     "lint": "tsc --noEmit",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "test": "node --test \"test/**/*.test.js\""
   },
   "files": [
     "dist"
